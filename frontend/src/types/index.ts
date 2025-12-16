@@ -1,0 +1,69 @@
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'manager';
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  aadharNumber: string;
+  panNumber: string;
+  createdAt: string;
+  status: 'active' | 'inactive';
+}
+
+export interface ChitScheme {
+  id: string;
+  name: string;
+  totalAmount: number;
+  duration: number; // in months
+  monthlyInstallment: number;
+  startDate: string;
+  endDate: string;
+  status: 'active' | 'completed' | 'cancelled';
+  totalMembers: number;
+  currentMembers: number;
+}
+
+export interface Payment {
+  id: string;
+  customerId: string;
+  customerName: string;
+  schemeId: string;
+  schemeName: string;
+  amount: number;
+  paymentDate: string;
+  month: number;
+  status: 'paid' | 'pending' | 'overdue';
+}
+
+export interface Auction {
+  id: string;
+  schemeId: string;
+  schemeName: string;
+  auctionDate: string;
+  baseAmount: number;
+  highestBid: number;
+  winnerId?: string;
+  winnerName?: string;
+  status: 'scheduled' | 'completed' | 'cancelled';
+}
+
+export interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+export interface RegisterData {
+  username: string;
+  email: string;
+  password: string;
+  name: string;
+}
+
