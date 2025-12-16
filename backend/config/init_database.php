@@ -81,7 +81,9 @@ try {
         name VARCHAR(100) NOT NULL,
         email VARCHAR(100) NOT NULL,
         phone VARCHAR(20) NOT NULL,
+        whatsapp_number VARCHAR(20),
         address TEXT NOT NULL,
+        city VARCHAR(100),
         aadhar_number VARCHAR(20) NOT NULL,
         pan_number VARCHAR(20) NOT NULL,
         status ENUM('active', 'inactive') DEFAULT 'active',
@@ -97,10 +99,25 @@ try {
         monthly_installment DECIMAL(15, 2) NOT NULL,
         start_date DATE NOT NULL,
         end_date DATE NOT NULL,
+        chit_frequency ENUM('week', 'month') DEFAULT 'month',
+        chit_type ENUM('fixed', 'auction') DEFAULT 'auction',
         status ENUM('active', 'completed', 'cancelled') DEFAULT 'active',
         total_members INT NOT NULL,
         current_members INT DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // Customer Schemes (Junction table - links customers to chit schemes)
+    // Note: No unique constraint - customers can join the same scheme multiple times
+    $conn->exec("CREATE TABLE IF NOT EXISTS customer_schemes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        customer_id INT NOT NULL,
+        scheme_id INT NOT NULL,
+        joined_date DATE DEFAULT (CURRENT_DATE),
+        status ENUM('active', 'completed', 'cancelled') DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+        FOREIGN KEY (scheme_id) REFERENCES chit_schemes(id) ON DELETE CASCADE
     )");
 
     // Payments table
@@ -153,20 +170,20 @@ try {
     $stmt = $conn->prepare("SELECT COUNT(*) FROM customers");
     $stmt->execute();
     if ($stmt->fetchColumn() == 0) {
-        $conn->exec("INSERT INTO customers (name, email, phone, address, aadhar_number, pan_number, status, created_at) VALUES
-            ('Rajesh Kumar', 'rajesh@example.com', '9876543210', '123 Main Street, City', '1234-5678-9012', 'ABCDE1234F', 'active', '2024-01-15'),
-            ('Priya Sharma', 'priya@example.com', '9876543211', '456 Park Avenue, City', '2345-6789-0123', 'FGHIJ5678K', 'active', '2024-01-20'),
-            ('Amit Patel', 'amit@example.com', '9876543212', '789 Market Road, City', '3456-7890-1234', 'LMNOP9012Q', 'active', '2024-02-01')");
+        $conn->exec("INSERT INTO customers (name, email, phone, whatsapp_number, address, city, aadhar_number, pan_number, status, created_at) VALUES
+            ('Rajesh Kumar', 'rajesh@example.com', '9876543210', '9876543210', '123 Main Street', 'Mumbai', '1234-5678-9012', 'ABCDE1234F', 'active', '2024-01-15'),
+            ('Priya Sharma', 'priya@example.com', '9876543211', '9876543211', '456 Park Avenue', 'Delhi', '2345-6789-0123', 'FGHIJ5678K', 'active', '2024-01-20'),
+            ('Amit Patel', 'amit@example.com', '9876543212', '9876543212', '789 Market Road', 'Bangalore', '3456-7890-1234', 'LMNOP9012Q', 'active', '2024-02-01')");
     }
 
     // Insert default schemes
     $stmt = $conn->prepare("SELECT COUNT(*) FROM chit_schemes");
     $stmt->execute();
     if ($stmt->fetchColumn() == 0) {
-        $conn->exec("INSERT INTO chit_schemes (name, total_amount, duration, monthly_installment, start_date, end_date, status, total_members, current_members) VALUES
-            ('Monthly Chit Scheme - 1 Lakh', 100000, 12, 8333, '2024-01-01', '2024-12-31', 'active', 20, 15),
-            ('Monthly Chit Scheme - 5 Lakh', 500000, 24, 20833, '2024-01-01', '2025-12-31', 'active', 25, 20),
-            ('Monthly Chit Scheme - 2 Lakh', 200000, 12, 16666, '2023-06-01', '2024-05-31', 'completed', 15, 15)");
+        $conn->exec("INSERT INTO chit_schemes (name, total_amount, duration, monthly_installment, start_date, end_date, chit_frequency, chit_type, status, total_members, current_members) VALUES
+            ('Monthly Chit Scheme - 1 Lakh', 100000, 12, 8333, '2024-01-01', '2024-12-31', 'month', 'auction', 'active', 20, 15),
+            ('Monthly Chit Scheme - 5 Lakh', 500000, 24, 20833, '2024-01-01', '2025-12-31', 'month', 'fixed', 'active', 25, 20),
+            ('Monthly Chit Scheme - 2 Lakh', 200000, 12, 16666, '2023-06-01', '2024-05-31', 'month', 'auction', 'completed', 15, 15)");
     }
 
     // Insert default auctions

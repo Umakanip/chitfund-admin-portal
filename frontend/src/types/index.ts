@@ -11,9 +11,13 @@ export interface Customer {
   name: string;
   email: string;
   phone: string;
+  whatsappNumber?: string;
   address: string;
+  city?: string;
   aadharNumber: string;
   panNumber: string;
+  schemeId?: string;
+  schemeName?: string;
   createdAt: string;
   status: 'active' | 'inactive';
 }
@@ -26,6 +30,8 @@ export interface ChitScheme {
   monthlyInstallment: number;
   startDate: string;
   endDate: string;
+  chitFrequency: 'week' | 'month';
+  chitType: 'fixed' | 'auction';
   status: 'active' | 'completed' | 'cancelled';
   totalMembers: number;
   currentMembers: number;

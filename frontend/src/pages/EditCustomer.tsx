@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiService } from '../services/api';
-import { Customer } from '../types';
+import { Customer, ChitScheme } from '../types';
 
 export default function EditCustomer() {
   const { id } = useParams<{ id: string }>();
@@ -10,18 +10,37 @@ export default function EditCustomer() {
     name: '',
     email: '',
     phone: '',
+    whatsappNumber: '',
     address: '',
+    city: '',
     aadharNumber: '',
     panNumber: '',
+    schemeId: '',
     status: 'active' as 'active' | 'inactive'
   });
+  const [schemes, setSchemes] = useState<ChitScheme[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingSchemes, setLoadingSchemes] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    loadSchemes();
     loadCustomer();
   }, [id]);
+
+  const loadSchemes = async () => {
+    try {
+      const data = await apiService.getSchemes();
+      // Filter only active schemes
+      const activeSchemes = data.filter(s => s.status === 'active');
+      setSchemes(activeSchemes);
+    } catch (err) {
+      console.error('Failed to load schemes:', err);
+    } finally {
+      setLoadingSchemes(false);
+    }
+  };
 
   const loadCustomer = async () => {
     if (!id) {
@@ -36,9 +55,12 @@ export default function EditCustomer() {
           name: customer.name,
           email: customer.email,
           phone: customer.phone,
+          whatsappNumber: customer.whatsappNumber || '',
           address: customer.address,
+          city: customer.city || '',
           aadharNumber: customer.aadharNumber,
           panNumber: customer.panNumber,
+          schemeId: customer.schemeId || '',
           status: customer.status
         });
       } else {
@@ -135,7 +157,37 @@ export default function EditCustomer() {
             </div>
           </div>
 
-          {/* Row 2: Address (Full Width) */}
+          {/* Row 2: WhatsApp Number, City */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '20px' }}>
+            <div className="form-group">
+              <label>WhatsApp Number</label>
+              <input
+                type="tel"
+                name="whatsappNumber"
+                value={formData.whatsappNumber}
+                onChange={handleChange}
+                placeholder="Enter WhatsApp number"
+                pattern="[0-9]{10}"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>City</label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                placeholder="Enter city"
+              />
+            </div>
+
+            <div className="form-group">
+              {/* Empty space for alignment */}
+            </div>
+          </div>
+
+          {/* Row 3: Address (Full Width) */}
           <div className="form-group" style={{ marginBottom: '20px' }}>
             <label>Address *</label>
             <textarea
@@ -196,6 +248,44 @@ export default function EditCustomer() {
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
+            </div>
+          </div>
+
+          {/* Row 4: Chit Scheme Selection */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '20px' }}>
+            <div className="form-group">
+              <label>Chit Scheme</label>
+              {loadingSchemes ? (
+                <select disabled>
+                  <option>Loading schemes...</option>
+                </select>
+              ) : (
+                <select
+                  name="schemeId"
+                  value={formData.schemeId}
+                  onChange={handleChange}
+                >
+                  <option value="">No scheme selected</option>
+                  {schemes.map(scheme => (
+                    <option key={scheme.id} value={scheme.id}>
+                      {scheme.name} - ₹{scheme.totalAmount.toLocaleString('en-IN')}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {schemes.length === 0 && !loadingSchemes && (
+                <small style={{ color: '#dc3545', display: 'block', marginTop: '5px' }}>
+                  No active schemes available.
+                </small>
+              )}
+            </div>
+
+            <div className="form-group">
+              {/* Empty space for alignment */}
+            </div>
+
+            <div className="form-group">
+              {/* Empty space for alignment */}
             </div>
           </div>
 

@@ -302,10 +302,16 @@ export default function SchemeList() {
                   <strong>Total Amount:</strong> {formatCurrency(scheme.totalAmount)}
                 </p>
                 <p style={{ margin: '5px 0' }}>
-                  <strong>Monthly Installment:</strong> {formatCurrency(scheme.monthlyInstallment)}
+                  <strong>Installment ({scheme.chitFrequency === 'week' ? 'Week' : 'Month'}):</strong> {formatCurrency(scheme.monthlyInstallment)}
                 </p>
                 <p style={{ margin: '5px 0' }}>
                   <strong>Duration:</strong> {scheme.duration} months
+                </p>
+                <p style={{ margin: '5px 0' }}>
+                  <strong>Chit Frequency:</strong> {scheme.chitFrequency === 'week' ? 'Week' : 'Month'}
+                </p>
+                <p style={{ margin: '5px 0' }}>
+                  <strong>Chit Type:</strong> {scheme.chitType === 'fixed' ? 'Fixed' : 'Auction'}
                 </p>
                 <p style={{ margin: '5px 0' }}>
                   <strong>Members:</strong> {scheme.currentMembers} / {scheme.totalMembers}

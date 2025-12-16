@@ -16,7 +16,8 @@ if (!$id) {
 
 try {
     $stmt = $conn->prepare("SELECT id, name, total_amount as totalAmount, duration, monthly_installment as monthlyInstallment, 
-                            start_date as startDate, end_date as endDate, status, total_members as totalMembers, 
+                            start_date as startDate, end_date as endDate, chit_frequency as chitFrequency, 
+                            chit_type as chitType, status, total_members as totalMembers, 
                             current_members as currentMembers FROM chit_schemes WHERE id = ?");
     $stmt->execute([$id]);
     $scheme = $stmt->fetch();

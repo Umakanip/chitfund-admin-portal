@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
+import { ChitScheme } from '../types';
 
 export default function AddCustomer() {
   const navigate = useNavigate();
@@ -8,13 +9,35 @@ export default function AddCustomer() {
     name: '',
     email: '',
     phone: '',
+    whatsappNumber: '',
     address: '',
+    city: '',
     aadharNumber: '',
     panNumber: '',
+    schemeId: '',
     status: 'active' as 'active' | 'inactive'
   });
+  const [schemes, setSchemes] = useState<ChitScheme[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingSchemes, setLoadingSchemes] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    loadSchemes();
+  }, []);
+
+  const loadSchemes = async () => {
+    try {
+      const data = await apiService.getSchemes();
+      // Filter only active schemes
+      const activeSchemes = data.filter(s => s.status === 'active');
+      setSchemes(activeSchemes);
+    } catch (err) {
+      console.error('Failed to load schemes:', err);
+    } finally {
+      setLoadingSchemes(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -94,7 +117,37 @@ export default function AddCustomer() {
             </div>
           </div>
 
-          {/* Row 2: Address (Full Width) */}
+          {/* Row 2: WhatsApp Number, City */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '20px' }}>
+            <div className="form-group">
+              <label>WhatsApp Number</label>
+              <input
+                type="tel"
+                name="whatsappNumber"
+                value={formData.whatsappNumber}
+                onChange={handleChange}
+                placeholder="Enter WhatsApp number"
+                pattern="[0-9]{10}"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>City</label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                placeholder="Enter city"
+              />
+            </div>
+
+            <div className="form-group">
+              {/* Empty space for alignment */}
+            </div>
+          </div>
+
+          {/* Row 3: Address (Full Width) */}
           <div className="form-group" style={{ marginBottom: '20px' }}>
             <label>Address *</label>
             <textarea
@@ -155,6 +208,45 @@ export default function AddCustomer() {
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
+            </div>
+          </div>
+
+          {/* Row 4: Chit Scheme Selection */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '20px' }}>
+            <div className="form-group">
+              <label>Chit Scheme *</label>
+              {loadingSchemes ? (
+                <select disabled>
+                  <option>Loading schemes...</option>
+                </select>
+              ) : (
+                <select
+                  name="schemeId"
+                  value={formData.schemeId}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select a chit scheme</option>
+                  {schemes.map(scheme => (
+                    <option key={scheme.id} value={scheme.id}>
+                      {scheme.name} - ₹{scheme.totalAmount.toLocaleString('en-IN')}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {schemes.length === 0 && !loadingSchemes && (
+                <small style={{ color: '#dc3545', display: 'block', marginTop: '5px' }}>
+                  No active schemes available. Please create a scheme first.
+                </small>
+              )}
+            </div>
+
+            <div className="form-group">
+              {/* Empty space for alignment */}
+            </div>
+
+            <div className="form-group">
+              {/* Empty space for alignment */}
             </div>
           </div>
 

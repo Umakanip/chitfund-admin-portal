@@ -25,9 +25,9 @@ export default function Pagination({
   return (
     <div style={{
       display: 'flex',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-end',
       alignItems: 'center',
-      marginTop: '20px',
+      gap: '15px',
       padding: '10px 0'
     }}>
       <div style={{ color: '#666', fontSize: '14px' }}>

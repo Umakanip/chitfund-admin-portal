@@ -12,6 +12,8 @@ export default function EditScheme() {
     monthlyInstallment: '',
     startDate: '',
     endDate: '',
+    chitFrequency: 'month' as 'week' | 'month',
+    chitType: 'auction' as 'fixed' | 'auction',
     totalMembers: '',
     currentMembers: '',
     status: 'active' as 'active' | 'completed' | 'cancelled'
@@ -40,6 +42,8 @@ export default function EditScheme() {
           monthlyInstallment: String(scheme.monthlyInstallment),
           startDate: scheme.startDate,
           endDate: scheme.endDate,
+          chitFrequency: scheme.chitFrequency || 'month',
+          chitType: scheme.chitType || 'auction',
           totalMembers: String(scheme.totalMembers),
           currentMembers: String(scheme.currentMembers),
           status: scheme.status
@@ -56,37 +60,47 @@ export default function EditScheme() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
+    
+    setFormData(prev => {
+      const updatedFormData = {
+        ...prev,
+        [name]: value
+      };
+      
+      // Auto-calculate installment if total amount, duration, and frequency are provided
+      if (name === 'totalAmount' || name === 'duration' || name === 'chitFrequency') {
+        const totalAmount = name === 'totalAmount' ? parseFloat(value) : parseFloat(updatedFormData.totalAmount);
+        const duration = name === 'duration' ? parseInt(value) : parseInt(updatedFormData.duration);
+        const frequency = name === 'chitFrequency' ? value : updatedFormData.chitFrequency;
+        
+        if (totalAmount && duration && duration > 0) {
+          let installment = 0;
+          if (frequency === 'week') {
+            // For weekly: total amount divided by (duration in months * 4 weeks per month)
+            installment = totalAmount / (duration * 4);
+          } else {
+            // For monthly: total amount divided by duration in months
+            installment = totalAmount / duration;
+          }
+          
+          updatedFormData.monthlyInstallment = installment.toFixed(2);
+        }
+      }
+
+      // Auto-calculate end date if start date and duration are provided
+      if (name === 'startDate' || name === 'duration') {
+        const startDate = name === 'startDate' ? value : updatedFormData.startDate;
+        const duration = name === 'duration' ? parseInt(value) : parseInt(updatedFormData.duration);
+        if (startDate && duration) {
+          const start = new Date(startDate);
+          start.setMonth(start.getMonth() + duration);
+          const endDate = start.toISOString().split('T')[0];
+          updatedFormData.endDate = endDate;
+        }
+      }
+      
+      return updatedFormData;
     });
-
-    // Auto-calculate monthly installment if total amount and duration are provided
-    if (name === 'totalAmount' || name === 'duration') {
-      const totalAmount = name === 'totalAmount' ? parseFloat(value) : parseFloat(formData.totalAmount);
-      const duration = name === 'duration' ? parseInt(value) : parseInt(formData.duration);
-      if (totalAmount && duration && duration > 0) {
-        setFormData(prev => ({
-          ...prev,
-          monthlyInstallment: (totalAmount / duration).toFixed(2)
-        }));
-      }
-    }
-
-    // Auto-calculate end date if start date and duration are provided
-    if (name === 'startDate' || name === 'duration') {
-      const startDate = name === 'startDate' ? value : formData.startDate;
-      const duration = name === 'duration' ? parseInt(value) : parseInt(formData.duration);
-      if (startDate && duration) {
-        const start = new Date(startDate);
-        start.setMonth(start.getMonth() + duration);
-        const endDate = start.toISOString().split('T')[0];
-        setFormData(prev => ({
-          ...prev,
-          endDate
-        }));
-      }
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,6 +118,8 @@ export default function EditScheme() {
         monthlyInstallment: parseFloat(formData.monthlyInstallment),
         startDate: formData.startDate,
         endDate: formData.endDate,
+        chitFrequency: formData.chitFrequency,
+        chitType: formData.chitType,
         totalMembers: parseInt(formData.totalMembers),
         currentMembers: parseInt(formData.currentMembers),
         status: formData.status
@@ -179,7 +195,9 @@ export default function EditScheme() {
             </div>
 
             <div className="form-group">
-              <label>Monthly Installment (₹) *</label>
+              <label>
+                Installment ({formData.chitFrequency === 'week' ? 'Week' : 'Month'}) (₹) *
+              </label>
               <input
                 type="number"
                 name="monthlyInstallment"
@@ -193,7 +211,7 @@ export default function EditScheme() {
             </div>
           </div>
 
-          {/* Row 3: Start Date, End Date, Total Members */}
+          {/* Row 3: Start Date, End Date, Chit Frequency */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '20px' }}>
             <div className="form-group">
               <label>Start Date *</label>
@@ -218,6 +236,35 @@ export default function EditScheme() {
             </div>
 
             <div className="form-group">
+              <label>Chit Frequency *</label>
+              <select
+                name="chitFrequency"
+                value={formData.chitFrequency}
+                onChange={handleChange}
+                required
+              >
+                <option value="week">Week</option>
+                <option value="month">Month</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Row 4: Chit Type, Total Members, Current Members */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '20px' }}>
+            <div className="form-group">
+              <label>Chit Type *</label>
+              <select
+                name="chitType"
+                value={formData.chitType}
+                onChange={handleChange}
+                required
+              >
+                <option value="fixed">Fixed</option>
+                <option value="auction">Auction</option>
+              </select>
+            </div>
+
+            <div className="form-group">
               <label>Total Members *</label>
               <input
                 type="number"
@@ -229,10 +276,7 @@ export default function EditScheme() {
                 placeholder="20"
               />
             </div>
-          </div>
 
-          {/* Row 4: Current Members, Status */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '20px' }}>
             <div className="form-group">
               <label>Current Members</label>
               <input
@@ -244,7 +288,10 @@ export default function EditScheme() {
                 placeholder="0"
               />
             </div>
+          </div>
 
+          {/* Row 5: Status */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '20px' }}>
             <div className="form-group">
               <label>Status *</label>
               <select
@@ -257,6 +304,10 @@ export default function EditScheme() {
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
               </select>
+            </div>
+
+            <div className="form-group">
+              {/* Empty space for alignment */}
             </div>
 
             <div className="form-group">

@@ -344,12 +344,17 @@ export default function CustomerList() {
       </div>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table className="table">
+        <div className="table-wrapper" style={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch' }}>
+          <table className="table" style={{ minWidth: '1200px', width: '100%', tableLayout: 'auto', whiteSpace: 'nowrap' }}>
           <thead>
             <tr>
               <th>Name</th>
               <th>Email</th>
               <th>Phone</th>
+              <th>WhatsApp</th>
+              <th>City</th>
+              <th>Address</th>
+              <th>Chit Scheme</th>
               <th>Aadhar</th>
               <th>PAN</th>
               <th>Status</th>
@@ -360,24 +365,46 @@ export default function CustomerList() {
           <tbody>
             {paginatedCustomers.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '40px' }}>
+                <td colSpan={12} style={{ textAlign: 'center', padding: '40px' }}>
                   {searchTerm ? 'No customers found matching your search' : 'No customers found'}
                 </td>
               </tr>
             ) : (
               paginatedCustomers.map(customer => (
                 <tr key={customer.id}>
-                  <td>{customer.name}</td>
-                  <td>{customer.email}</td>
-                  <td>{customer.phone}</td>
-                  <td>{customer.aadharNumber}</td>
-                  <td>{customer.panNumber}</td>
-                  <td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{customer.name}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{customer.email}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{customer.phone}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{customer.whatsappNumber || 'N/A'}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{customer.city || 'N/A'}</td>
+                  <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={customer.address}>
+                    {customer.address}
+                  </td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    {customer.schemeName ? (
+                      <span style={{ 
+                        padding: '4px 8px', 
+                        borderRadius: '4px', 
+                        background: '#e7f3ff', 
+                        color: '#007bff',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        display: 'inline-block'
+                      }}>
+                        {customer.schemeName}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#999', fontStyle: 'italic' }}>No scheme</span>
+                    )}
+                  </td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{customer.aadharNumber}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{customer.panNumber}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
                     <span className={`badge ${customer.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
                       {customer.status}
                     </span>
                   </td>
-                  <td>{customer.createdAt}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{customer.createdAt}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <button
@@ -461,16 +488,19 @@ export default function CustomerList() {
               ))
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
 
-      <Pagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        totalItems={filteredCustomers.length}
-        itemsPerPage={itemsPerPage}
-        onPageChange={setCurrentPage}
-      />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredCustomers.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+        />
+      </div>
     </div>
   );
 }
