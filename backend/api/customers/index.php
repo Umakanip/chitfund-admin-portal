@@ -6,22 +6,28 @@ $conn = $db->getConnection();
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
-        $stmt = $conn->query("SELECT c.id, c.name, c.email, c.phone, c.whatsapp_number as whatsappNumber, 
+        // Get unique customers first, then get their scheme info separately
+        $stmt = $conn->query("SELECT DISTINCT c.id, c.name, c.email, c.phone, c.whatsapp_number as whatsappNumber, 
                              c.address, c.city, c.aadhar_number as aadharNumber, 
-                             c.pan_number as panNumber, c.status, c.created_at as createdAt,
-                             cs.scheme_id as schemeId,
-                             s.name as schemeName
+                             c.pan_number as panNumber, c.status, c.created_at as createdAt
                              FROM customers c
-                             LEFT JOIN customer_schemes cs ON c.id = cs.customer_id AND cs.status = 'active'
-                             LEFT JOIN chit_schemes s ON cs.scheme_id = s.id
                              ORDER BY c.id DESC");
         $customers = $stmt->fetchAll();
         
-        // Convert IDs to strings and handle null values
+        // Get scheme info for each customer (get first active scheme)
         foreach ($customers as &$customer) {
+            $customerId = $customer['id'];
+            $schemeStmt = $conn->prepare("SELECT cs.scheme_id, s.name as schemeName
+                                          FROM customer_schemes cs
+                                          LEFT JOIN chit_schemes s ON cs.scheme_id = s.id
+                                          WHERE cs.customer_id = ? AND cs.status = 'active'
+                                          LIMIT 1");
+            $schemeStmt->execute([$customerId]);
+            $scheme = $schemeStmt->fetch();
+            
             $customer['id'] = (string)$customer['id'];
-            $customer['schemeId'] = $customer['schemeId'] ? (string)$customer['schemeId'] : '';
-            $customer['schemeName'] = $customer['schemeName'] ? $customer['schemeName'] : '';
+            $customer['schemeId'] = $scheme ? (string)$scheme['scheme_id'] : '';
+            $customer['schemeName'] = $scheme ? $scheme['schemeName'] : '';
         }
         
         sendResponse(true, $customers);

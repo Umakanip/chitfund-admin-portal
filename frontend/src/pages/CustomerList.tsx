@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
-import { Customer } from '../types';
+import { Customer, ChitScheme } from '../types';
 import Pagination from '../components/Pagination';
 
 export default function CustomerList() {
@@ -11,11 +11,25 @@ export default function CustomerList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [schemes, setSchemes] = useState<ChitScheme[]>([]);
+  const [showAssignModal, setShowAssignModal] = useState<string | null>(null);
+  const [selectedSchemes, setSelectedSchemes] = useState<string[]>([]);
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     loadCustomers();
+    loadSchemes();
   }, []);
+
+  const loadSchemes = async () => {
+    try {
+      const data = await apiService.getSchemes();
+      setSchemes(data);
+    } catch (error) {
+      console.error('Failed to load schemes:', error);
+    }
+  };
 
   const loadCustomers = async () => {
     try {
@@ -31,11 +45,15 @@ export default function CustomerList() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   const filteredCustomers = useMemo(() => {
-    let filtered = customers.filter(customer =>
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.phone.includes(searchTerm)
-    );
+    let filtered = customers.filter(customer => {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        customer.name.toLowerCase().includes(searchLower) ||
+        customer.email.toLowerCase().includes(searchLower) ||
+        (customer.phone && customer.phone.includes(searchTerm)) ||
+        (customer.whatsappNumber && customer.whatsappNumber.includes(searchTerm))
+      );
+    });
 
     // Apply status filter
     if (statusFilter !== 'all') {
@@ -87,6 +105,76 @@ export default function CustomerList() {
     }
   };
 
+  const handleSchemeToggle = (schemeId: string) => {
+    setSelectedSchemes(prev => 
+      prev.includes(schemeId) 
+        ? prev.filter(id => id !== schemeId)
+        : [...prev, schemeId]
+    );
+  };
+
+  const handleAssignToSchemes = async (customerId: string) => {
+    if (selectedSchemes.length === 0) {
+      alert('Please select at least one scheme');
+      return;
+    }
+
+    setAssigning(true);
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+      const errorMessages: string[] = [];
+      
+      for (const schemeId of selectedSchemes) {
+        try {
+          const result = await apiService.addCustomersToScheme(schemeId, [customerId]);
+          console.log('Assignment result for scheme', schemeId, ':', result);
+          
+          // Check if customer was actually added (added > 0)
+          if (result && typeof result.added === 'number' && result.added > 0) {
+            successCount++;
+          } else {
+            // Customer might already be a member or scheme is full
+            const scheme = schemes.find(s => s.id === schemeId);
+            const schemeName = scheme?.name || schemeId;
+            if (result && result.skipped > 0) {
+              errorMessages.push(`${schemeName}: Customer is already a member`);
+            } else if (result && result.errors && Array.isArray(result.errors) && result.errors.length > 0) {
+              errorMessages.push(`${schemeName}: ${result.errors.join(', ')}`);
+            } else {
+              errorMessages.push(`${schemeName}: Could not be added (may already be a member)`);
+            }
+            errorCount++;
+          }
+        } catch (error: any) {
+          console.error(`Failed to assign to scheme ${schemeId}:`, error);
+          const scheme = schemes.find(s => s.id === schemeId);
+          const schemeName = scheme?.name || schemeId;
+          const errorMsg = error?.response?.data?.message || error?.message || 'Failed to assign';
+          errorMessages.push(`${schemeName}: ${errorMsg}`);
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        const message = `Successfully assigned to ${successCount} scheme(s)${errorCount > 0 ? `\n\nFailed:\n${errorMessages.join('\n')}` : ''}`;
+        alert(message);
+        // Reload schemes to update member counts
+        await loadSchemes();
+        setShowAssignModal(null);
+        setSelectedSchemes([]);
+      } else {
+        const message = `Failed to assign customer to any scheme:\n\n${errorMessages.join('\n')}`;
+        alert(message);
+      }
+    } catch (error: any) {
+      console.error('Assignment error:', error);
+      alert(error.message || 'Failed to assign customer to schemes');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '50px' }}>Loading...</div>;
   }
@@ -98,7 +186,7 @@ export default function CustomerList() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
           <input
             type="text"
-            placeholder="Search customers..."
+            placeholder="Search by name, email, or phone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
@@ -354,7 +442,6 @@ export default function CustomerList() {
               <th>WhatsApp</th>
               <th>City</th>
               <th>Address</th>
-              <th>Chit Scheme</th>
               <th>Aadhar</th>
               <th>PAN</th>
               <th>Status</th>
@@ -365,37 +452,20 @@ export default function CustomerList() {
           <tbody>
             {paginatedCustomers.length === 0 ? (
               <tr>
-                <td colSpan={12} style={{ textAlign: 'center', padding: '40px' }}>
+                <td colSpan={11} style={{ textAlign: 'center', padding: '40px' }}>
                   {searchTerm ? 'No customers found matching your search' : 'No customers found'}
                 </td>
               </tr>
             ) : (
               paginatedCustomers.map(customer => (
                 <tr key={customer.id}>
-                  <td style={{ whiteSpace: 'nowrap' }}>{customer.name}</td>
+                  <td style={{ whiteSpace: 'nowrap', fontWeight: '500' }}>{customer.name}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>{customer.email}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>{customer.phone}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>{customer.whatsappNumber || 'N/A'}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>{customer.city || 'N/A'}</td>
                   <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={customer.address}>
                     {customer.address}
-                  </td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
-                    {customer.schemeName ? (
-                      <span style={{ 
-                        padding: '4px 8px', 
-                        borderRadius: '4px', 
-                        background: '#e7f3ff', 
-                        color: '#007bff',
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        display: 'inline-block'
-                      }}>
-                        {customer.schemeName}
-                      </span>
-                    ) : (
-                      <span style={{ color: '#999', fontStyle: 'italic' }}>No scheme</span>
-                    )}
                   </td>
                   <td style={{ whiteSpace: 'nowrap' }}>{customer.aadharNumber}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>{customer.panNumber}</td>
@@ -427,7 +497,7 @@ export default function CustomerList() {
                           boxShadow: 'none'
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#007bff';
+                          e.currentTarget.style.background = '#0056b3';
                           e.currentTarget.style.color = 'white';
                           e.currentTarget.style.transform = 'scale(1.1)';
                           e.currentTarget.style.boxShadow = 'none';
@@ -501,6 +571,122 @@ export default function CustomerList() {
           onPageChange={setCurrentPage}
         />
       </div>
+
+      {/* Assign to Schemes Modal */}
+      {showAssignModal && (() => {
+        const customer = customers.find(c => c.id === showAssignModal);
+        return (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }} onClick={() => setShowAssignModal(null)}>
+            <div className="card" style={{
+              maxWidth: '600px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              position: 'relative'
+            }} onClick={(e) => e.stopPropagation()}>
+              <h2 style={{ marginTop: 0 }}>Assign to Schemes</h2>
+              {customer && (
+                <p style={{ color: '#666', marginBottom: '20px' }}>
+                  Assign <strong>{customer.name}</strong> to one or more schemes
+                </p>
+              )}
+              
+              {/* Selected Schemes Display */}
+              {selectedSchemes.length > 0 && (
+                <div style={{
+                  marginBottom: '15px',
+                  padding: '10px',
+                  background: '#e7f3ff',
+                  borderRadius: '4px',
+                  fontSize: '14px'
+                }}>
+                  <strong>Selected ({selectedSchemes.length}):</strong>{' '}
+                  {selectedSchemes.map(id => {
+                    const scheme = schemes.find(s => s.id === id);
+                    return scheme?.name;
+                  }).filter(Boolean).join(', ')}
+                </div>
+              )}
+
+              {/* Scheme List with Checkboxes */}
+              <div style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '20px' }}>
+                {schemes.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+                    No schemes found
+                  </div>
+                ) : (
+                  schemes.map(scheme => {
+                    const isFull = scheme.currentMembers >= scheme.totalMembers;
+                    const isActive = scheme.status === 'active';
+                    return (
+                      <div key={scheme.id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '10px',
+                        borderBottom: '1px solid #eee',
+                        cursor: isFull ? 'not-allowed' : 'pointer',
+                        opacity: isFull ? 0.6 : 1,
+                        background: isFull ? '#f5f5f5' : 'transparent'
+                      }} onClick={() => !isFull && handleSchemeToggle(scheme.id)}>
+                        <input
+                          type="checkbox"
+                          checked={selectedSchemes.includes(scheme.id)}
+                          onChange={() => !isFull && handleSchemeToggle(scheme.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          disabled={isFull}
+                          style={{ marginRight: '10px', cursor: isFull ? 'not-allowed' : 'pointer' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '500', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {scheme.name}
+                            {isFull && <span style={{ fontSize: '11px', color: '#dc3545', fontWeight: 'normal' }}>(Full)</span>}
+                            {!isActive && <span style={{ fontSize: '11px', color: '#6c757d', fontWeight: 'normal' }}>({scheme.status})</span>}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#666' }}>
+                            Members: {scheme.currentMembers} / {scheme.totalMembers} | Amount: ₹{scheme.totalAmount.toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => {
+                    setShowAssignModal(null);
+                    setSelectedSchemes([]);
+                  }}
+                  className="btn"
+                  style={{ background: '#6c757d', color: 'white' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleAssignToSchemes(showAssignModal)}
+                  disabled={selectedSchemes.length === 0 || assigning}
+                  className="btn btn-primary"
+                >
+                  {assigning ? 'Assigning...' : `Assign to ${selectedSchemes.length} Scheme(s)`}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

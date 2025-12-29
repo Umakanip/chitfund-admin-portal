@@ -41,8 +41,11 @@ export interface Payment {
   id: string;
   customerId: string;
   customerName: string;
+  customerPhone?: string;
+  customerEmail?: string;
   schemeId: string;
   schemeName: string;
+  installmentAmount?: number;
   amount: number;
   paymentDate: string;
   month: number;
@@ -71,5 +74,29 @@ export interface RegisterData {
   email: string;
   password: string;
   name: string;
+}
+
+export interface ChitSchedule {
+  id: string;
+  schemeId: string;
+  monthNumber: number;
+  customerId?: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  allocationType: 'auction' | 'fixed' | 'pending';
+  allocationDate?: string;
+  status: 'pending' | 'allocated' | 'completed' | 'cancelled';
+  amountReceived?: number;
+}
+
+export interface ChitScheduleGroup {
+  schemeId: string;
+  schemeName: string;
+  duration: number;
+  totalAmount: number;
+  chitType: 'fixed' | 'auction';
+  chitFrequency: 'week' | 'month';
+  schedules: ChitSchedule[];
 }
 

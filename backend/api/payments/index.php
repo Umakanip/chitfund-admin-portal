@@ -10,12 +10,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 try {
     $stmt = $conn->query("SELECT p.id, p.customer_id as customerId, c.name as customerName, 
-                          p.scheme_id as schemeId, s.name as schemeName, p.amount, 
-                          p.payment_date as paymentDate, p.month, p.status 
+                          c.phone as customerPhone, c.email as customerEmail,
+                          p.scheme_id as schemeId, s.name as schemeName, s.monthly_installment as installmentAmount,
+                          p.amount, p.payment_date as paymentDate, p.month, p.status 
                           FROM payments p 
                           LEFT JOIN customers c ON p.customer_id = c.id 
                           LEFT JOIN chit_schemes s ON p.scheme_id = s.id 
-                          ORDER BY p.id DESC");
+                          ORDER BY p.payment_date DESC, p.id DESC");
     $payments = $stmt->fetchAll();
     
     foreach ($payments as &$payment) {

@@ -10,7 +10,8 @@ import SchemeList from './pages/SchemeList';
 import AddScheme from './pages/AddScheme';
 import EditScheme from './pages/EditScheme';
 import PaymentList from './pages/PaymentList';
-import AuctionList from './pages/AuctionList';
+import ChitSchedule from './pages/ChitSchedule';
+import CustomerDetail from './pages/CustomerDetail';
 import Layout from './components/Layout';
 
 function App() {
@@ -81,6 +82,18 @@ function App() {
           }
         />
         <Route
+          path="/customers/detail/:id"
+          element={
+            isAuthenticated ? (
+              <Layout setIsAuthenticated={setIsAuthenticated}>
+                <CustomerDetail />
+              </Layout>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+        <Route
           path="/schemes"
           element={
             isAuthenticated ? (
@@ -129,11 +142,11 @@ function App() {
           }
         />
         <Route
-          path="/auctions"
+          path="/schedule"
           element={
             isAuthenticated ? (
               <Layout setIsAuthenticated={setIsAuthenticated}>
-                <AuctionList />
+                <ChitSchedule />
               </Layout>
             ) : (
               <Navigate to="/login" />

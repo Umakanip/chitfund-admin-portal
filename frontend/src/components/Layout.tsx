@@ -24,8 +24,8 @@ export default function Layout({ children, setIsAuthenticated }: LayoutProps) {
     { path: '/', label: 'Dashboard', icon: '📊' },
     { path: '/customers', label: 'Customers', icon: '👥' },
     { path: '/schemes', label: 'Chit Schemes', icon: '💰' },
-    { path: '/payments', label: 'Payments', icon: '💳' },
-    { path: '/auctions', label: 'Auctions', icon: '🔨' },
+    { path: '/schedule', label: 'Chit Schedule', icon: '📅' },
+    { path: '/payments', label: 'Reports', icon: '📊' },
   ];
 
   const isActive = (path: string) => {
@@ -192,7 +192,7 @@ export default function Layout({ children, setIsAuthenticated }: LayoutProps) {
               justifyContent: sidebarCollapsed ? 'center' : 'flex-start'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#e74c3c';
+              e.currentTarget.style.background = '#0056b3';
               e.currentTarget.style.color = '#fff';
             }}
             onMouseLeave={(e) => {

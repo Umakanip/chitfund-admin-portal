@@ -1,17 +1,22 @@
 import { useEffect, useState, useMemo } from 'react';
 import { apiService } from '../services/api';
-import { Payment } from '../types';
+import { Payment, ChitScheme } from '../types';
 import Pagination from '../components/Pagination';
 
 export default function PaymentList() {
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [schemes, setSchemes] = useState<ChitScheme[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'paid' | 'pending' | 'overdue'>('all');
+  const [selectedSchemeId, setSelectedSchemeId] = useState<string>('');
+  const [customerSearchTerm, setCustomerSearchTerm] = useState<string>('');
+  const [phoneSearchTerm, setPhoneSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     loadPayments();
+    loadSchemes();
   }, []);
 
   const loadPayments = async () => {
@@ -25,6 +30,15 @@ export default function PaymentList() {
     }
   };
 
+  const loadSchemes = async () => {
+    try {
+      const data = await apiService.getSchemes();
+      setSchemes(data);
+    } catch (error) {
+      console.error('Failed to load schemes:', error);
+    }
+  };
+
   // Calculate statistics
   const stats = useMemo(() => {
     const total = payments.length;
@@ -35,15 +49,37 @@ export default function PaymentList() {
   }, [payments]);
 
   const filteredPayments = useMemo(() => {
-    return filter === 'all'
+    let filtered = filter === 'all'
       ? payments
       : payments.filter(p => p.status === filter);
-  }, [payments, filter]);
+    
+    // Filter by selected scheme
+    if (selectedSchemeId) {
+      filtered = filtered.filter(p => p.schemeId === selectedSchemeId);
+    }
+    
+    // Filter by customer name search
+    if (customerSearchTerm) {
+      const searchLower = customerSearchTerm.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.customerName && p.customerName.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Filter by phone number search
+    if (phoneSearchTerm) {
+      filtered = filtered.filter(p => 
+        (p.customerPhone && p.customerPhone.includes(phoneSearchTerm))
+      );
+    }
+    
+    return filtered;
+  }, [payments, filter, selectedSchemeId, customerSearchTerm, phoneSearchTerm]);
 
   // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter]);
+  }, [filter, selectedSchemeId, customerSearchTerm, phoneSearchTerm]);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredPayments.length / itemsPerPage) || 1;
@@ -70,6 +106,18 @@ export default function PaymentList() {
     return filteredPayments.reduce((sum, p) => sum + p.amount, 0);
   };
 
+  const getTotalPaidAmount = () => {
+    return filteredPayments
+      .filter(p => p.status === 'paid')
+      .reduce((sum, p) => sum + p.amount, 0);
+  };
+
+  const getTotalPendingAmount = () => {
+    return filteredPayments
+      .filter(p => p.status === 'pending' || p.status === 'overdue')
+      .reduce((sum, p) => sum + p.amount, 0);
+  };
+
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '50px' }}>Loading...</div>;
   }
@@ -77,14 +125,110 @@ export default function PaymentList() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '15px', flexWrap: 'wrap' }}>
-        <h1 style={{ margin: 0, color: '#333' }}>Payments</h1>
-        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#007bff' }}>
-          Total: {formatCurrency(getTotalAmount())}
+        <h1 style={{ margin: 0, color: '#333' }}>Reports</h1>
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ 
+            fontSize: '16px', 
+            fontWeight: '600', 
+            color: '#28a745',
+            padding: '8px 16px',
+            background: '#d4edda',
+            borderRadius: '6px',
+            border: '1px solid #c3e6cb'
+          }}>
+            Total Paid Amount: {formatCurrency(getTotalPaidAmount())}
+          </div>
+          <div style={{ 
+            fontSize: '16px', 
+            fontWeight: '600', 
+            color: '#ffc107',
+            padding: '8px 16px',
+            background: '#fff3cd',
+            borderRadius: '6px',
+            border: '1px solid #ffeaa7'
+          }}>
+            Total Pending Amount: {formatCurrency(getTotalPendingAmount())}
+          </div>
+          <div style={{ 
+            fontSize: '16px', 
+            fontWeight: '600', 
+            color: '#007bff',
+            padding: '8px 16px',
+            background: '#e7f3ff',
+            borderRadius: '6px',
+            border: '1px solid #b3d9ff'
+          }}>
+            Total Amount: {formatCurrency(getTotalAmount())}
+          </div>
         </div>
       </div>
 
-      {/* Status Filter Chips */}
+      {/* Filters */}
       <div className="card" style={{ marginBottom: '20px', padding: '15px' }}>
+        {/* Scheme and Search Filters */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap', boxShadow: 'none', marginBottom: '15px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '14px', color: '#666', fontWeight: '500', whiteSpace: 'nowrap' }}>Filter by Scheme:</span>
+            <select
+              value={selectedSchemeId}
+              onChange={(e) => setSelectedSchemeId(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                fontSize: '14px',
+                minWidth: '200px',
+                background: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="">All Schemes</option>
+              {schemes.map(scheme => (
+                <option key={scheme.id} value={scheme.id}>
+                  {scheme.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1', minWidth: '200px' }}>
+            <span style={{ fontSize: '14px', color: '#666', fontWeight: '500', whiteSpace: 'nowrap' }}>Search Customer:</span>
+            <input
+              type="text"
+              placeholder="Customer name..."
+              value={customerSearchTerm}
+              onChange={(e) => setCustomerSearchTerm(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                fontSize: '14px',
+                flex: '1',
+                minWidth: '150px'
+              }}
+            />
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1', minWidth: '200px' }}>
+            <span style={{ fontSize: '14px', color: '#666', fontWeight: '500', whiteSpace: 'nowrap' }}>Search Phone:</span>
+            <input
+              type="text"
+              placeholder="Phone number..."
+              value={phoneSearchTerm}
+              onChange={(e) => setPhoneSearchTerm(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                fontSize: '14px',
+                flex: '1',
+                minWidth: '150px'
+              }}
+            />
+          </div>
+        </div>
+        
+        {/* Status Filter Chips */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', boxShadow: 'none' }}>
           <span style={{ fontSize: '14px', color: '#666', fontWeight: '500' }}>Filter by Status:</span>
           <button
@@ -195,45 +339,91 @@ export default function PaymentList() {
       </div>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Customer Name</th>
-              <th>Scheme Name</th>
-              <th>Amount</th>
-              <th>Month</th>
-              <th>Payment Date</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedPayments.length === 0 ? (
+        <div style={{ overflowX: 'auto' }}>
+          <table className="table" style={{ minWidth: '1400px' }}>
+            <thead>
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '40px' }}>
-                  No payments found
-                </td>
+                <th style={{ whiteSpace: 'nowrap' }}>Payment ID</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Customer Name</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Phone</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Email</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Scheme Name</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Installment Amount</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Installment #</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Paid Amount</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Payment Date</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Status</th>
               </tr>
-            ) : (
-              paginatedPayments.map(payment => (
-                <tr key={payment.id}>
-                  <td>{payment.customerName}</td>
-                  <td>{payment.schemeName}</td>
-                  <td>{formatCurrency(payment.amount)}</td>
-                  <td>Month {payment.month}</td>
-                  <td>{payment.paymentDate || 'N/A'}</td>
-                  <td>
-                    <span className={`badge ${
-                      payment.status === 'paid' ? 'badge-success' :
-                      payment.status === 'pending' ? 'badge-warning' : 'badge-danger'
-                    }`}>
-                      {payment.status}
-                    </span>
+            </thead>
+            <tbody>
+              {paginatedPayments.length === 0 ? (
+                <tr>
+                  <td colSpan={10} style={{ textAlign: 'center', padding: '40px' }}>
+                    No payments found
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                paginatedPayments.map(payment => (
+                  <tr key={payment.id}>
+                    <td style={{ whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: '12px', color: '#666' }}>
+                      #{payment.id}
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap', fontWeight: '500' }}>{payment.customerName || 'N/A'}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{payment.customerPhone || 'N/A'}</td>
+                    <td style={{ whiteSpace: 'nowrap', fontSize: '13px' }}>{payment.customerEmail || 'N/A'}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{payment.schemeName || 'N/A'}</td>
+                    <td style={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: '500', color: '#495057' }}>
+                      {payment.installmentAmount ? formatCurrency(payment.installmentAmount) : 'N/A'}
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap', textAlign: 'center' }}>
+                      <span style={{
+                        padding: '4px 8px',
+                        background: '#e7f3ff',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        color: '#007bff'
+                      }}>
+                        #{payment.month || 'N/A'}
+                      </span>
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap', fontWeight: '600', color: '#28a745' }}>
+                      {formatCurrency(payment.amount)}
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      {payment.paymentDate 
+                        ? new Date(payment.paymentDate).toLocaleDateString('en-IN', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })
+                        : 'N/A'}
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <span style={{
+                        padding: '4px 12px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        textTransform: 'capitalize',
+                        background: 
+                          payment.status === 'paid' ? '#d4edda' :
+                          payment.status === 'pending' ? '#fff3cd' :
+                          '#f8d7da',
+                        color: 
+                          payment.status === 'paid' ? '#155724' :
+                          payment.status === 'pending' ? '#856404' :
+                          '#721c24'
+                      }}>
+                        {payment.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Pagination

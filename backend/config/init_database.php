@@ -120,6 +120,23 @@ try {
         FOREIGN KEY (scheme_id) REFERENCES chit_schemes(id) ON DELETE CASCADE
     )");
 
+    // Chit Schedules table - Monthly allocation schedule for each chit scheme
+    $conn->exec("CREATE TABLE IF NOT EXISTS chit_schedules (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        scheme_id INT NOT NULL,
+        month_number INT NOT NULL,
+        customer_id INT NULL,
+        allocation_type ENUM('auction', 'fixed', 'pending') DEFAULT 'pending',
+        allocation_date DATE NULL,
+        status ENUM('pending', 'allocated', 'completed', 'cancelled') DEFAULT 'pending',
+        amount_received DECIMAL(15, 2) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (scheme_id) REFERENCES chit_schemes(id) ON DELETE CASCADE,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
+        UNIQUE KEY unique_scheme_month (scheme_id, month_number)
+    )");
+
     // Payments table
     $conn->exec("CREATE TABLE IF NOT EXISTS payments (
         id INT AUTO_INCREMENT PRIMARY KEY,

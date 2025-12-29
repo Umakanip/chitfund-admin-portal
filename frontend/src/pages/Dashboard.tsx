@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiService } from '../services/api';
-import { Customer, ChitScheme, Payment, Auction } from '../types';
+import { Customer, ChitScheme, Payment } from '../types';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
     totalCustomers: 0,
     activeSchemes: 0,
     totalPayments: 0,
-    pendingPayments: 0,
-    upcomingAuctions: 0
+    pendingPayments: 0
   });
   const [loading, setLoading] = useState(true);
 
@@ -19,19 +18,17 @@ export default function Dashboard() {
 
   const loadStats = async () => {
     try {
-      const [customers, schemes, payments, auctions] = await Promise.all([
+      const [customers, schemes, payments] = await Promise.all([
         apiService.getCustomers(),
         apiService.getSchemes(),
-        apiService.getPayments(),
-        apiService.getAuctions()
+        apiService.getPayments()
       ]);
 
       setStats({
         totalCustomers: customers.length,
         activeSchemes: schemes.filter(s => s.status === 'active').length,
         totalPayments: payments.length,
-        pendingPayments: payments.filter(p => p.status === 'pending').length,
-        upcomingAuctions: auctions.filter(a => a.status === 'scheduled').length
+        pendingPayments: payments.filter(p => p.status === 'pending').length
       });
     } catch (error) {
       console.error('Failed to load stats:', error);
@@ -48,8 +45,7 @@ export default function Dashboard() {
     { title: 'Total Customers', value: stats.totalCustomers, color: '#007bff', link: '/customers' },
     { title: 'Active Schemes', value: stats.activeSchemes, color: '#28a745', link: '/schemes' },
     { title: 'Total Payments', value: stats.totalPayments, color: '#ffc107', link: '/payments' },
-    { title: 'Pending Payments', value: stats.pendingPayments, color: '#dc3545', link: '/payments' },
-    { title: 'Upcoming Auctions', value: stats.upcomingAuctions, color: '#17a2b8', link: '/auctions' }
+    { title: 'Pending Payments', value: stats.pendingPayments, color: '#dc3545', link: '/payments' }
   ];
 
   return (
@@ -103,9 +99,6 @@ export default function Dashboard() {
             <Link to="/payments" className="btn btn-secondary" style={{ textAlign: 'center', textDecoration: 'none' }}>
               View Payments
             </Link>
-            <Link to="/auctions" className="btn btn-secondary" style={{ textAlign: 'center', textDecoration: 'none' }}>
-              View Auctions
-            </Link>
           </div>
         </div>
 
@@ -113,7 +106,7 @@ export default function Dashboard() {
           <h2 style={{ marginBottom: '15px', color: '#333' }}>Recent Activity</h2>
           <div style={{ color: '#666' }}>
             <p>• Welcome to Chit Fund Admin Portal</p>
-            <p>• Manage customers, schemes, payments, and auctions</p>
+            <p>• Manage customers, schemes, and payments</p>
             <p>• Use the navigation menu to access different sections</p>
             <p>• All data is currently mocked for frontend development</p>
           </div>

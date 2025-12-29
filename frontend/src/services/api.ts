@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { User, Customer, ChitScheme, Payment, Auction, LoginCredentials, RegisterData } from '../types';
+import { User, Customer, ChitScheme, Payment, Auction, LoginCredentials, RegisterData, ChitSchedule, ChitScheduleGroup } from '../types';
 
 // Update this URL to match your backend server
 // For XAMPP/WAMP: http://localhost/chitfund-admin-portal/backend/api
@@ -139,6 +139,14 @@ export const apiService = {
     throw new Error(response.data.message || 'Failed to fetch payments');
   },
 
+  async createPayment(payment: { customerId: string; schemeId: string; amount: number; paymentDate: string; installmentNumber: number }): Promise<any> {
+    const response = await api.post('/payments/create.php', payment);
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to create payment');
+    }
+    return response.data.data;
+  },
+
   // Auctions
   async getAuctions(): Promise<Auction[]> {
     const response = await api.get('/auctions/index.php');
@@ -146,6 +154,91 @@ export const apiService = {
       return response.data.data;
     }
     throw new Error(response.data.message || 'Failed to fetch auctions');
+  },
+
+  // Chit Schedules
+  async getSchedules(schemeId?: string): Promise<ChitSchedule[] | ChitScheduleGroup[]> {
+    const url = schemeId ? `/schedules/index.php?schemeId=${schemeId}` : '/schedules/index.php';
+    const response = await api.get(url);
+    if (response.data.success) {
+      return response.data.data;
+    }
+    throw new Error(response.data.message || 'Failed to fetch schedules');
+  },
+
+  async generateSchedule(schemeId: string): Promise<void> {
+    const response = await api.post('/schedules/generate.php', { schemeId });
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to generate schedule');
+    }
+  },
+
+  async allocateSchedule(scheduleId: string, customerId: string, allocationDate?: string, amountReceived?: number): Promise<void> {
+    const response = await api.post('/schedules/allocate.php', {
+      scheduleId,
+      customerId: customerId || null,
+      allocationDate,
+      amountReceived
+    });
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to allocate schedule');
+    }
+  },
+
+  async autoAllocateMembers(schemeId: string): Promise<any> {
+    const response = await api.post('/schedules/auto_allocate.php', { schemeId });
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to auto allocate members');
+    }
+    return response.data.data;
+  },
+
+  async reallocateAllMembers(schemeId: string): Promise<any> {
+    const response = await api.post('/schedules/reallocate_all.php', { schemeId });
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to reallocate all members');
+    }
+    return response.data.data;
+  },
+
+  async getSchemeMembers(schemeId: string): Promise<Customer[]> {
+    const response = await api.get(`/schemes/get_members.php?schemeId=${schemeId}`);
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to fetch scheme members');
+    }
+    return response.data.data;
+  },
+
+  async addCustomersToScheme(schemeId: string, customerIds: string[]): Promise<any> {
+    const response = await api.post('/schemes/add_customers.php', { schemeId, customerIds });
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to add customers to scheme');
+    }
+    return response.data.data;
+  },
+
+  async getCustomerDetail(customerId: string): Promise<any> {
+    const response = await api.get(`/customers/get_detail.php?id=${customerId}`);
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to fetch customer detail');
+    }
+    return response.data.data;
+  },
+
+  async getMemberSummary(schemeId: string): Promise<any> {
+    const response = await api.get(`/schedules/member_summary.php?schemeId=${schemeId}`);
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to fetch member summary');
+    }
+    return response.data.data;
+  },
+
+  async redistributeMembers(schemeId: string): Promise<any> {
+    const response = await api.post('/schedules/redistribute.php', { schemeId });
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to redistribute members');
+    }
+    return response.data.data;
   },
 };
 
